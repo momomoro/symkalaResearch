@@ -1,0 +1,52 @@
+# This is docker compose file to run localy with a setup that mirrors prod
+
+version: '3.1'
+
+volumes:
+  prometheus_data: {}
+
+services:
+    nginx:
+      image: nginx
+      container_name: nginx
+      ports:
+          - "8000:8000"
+      volumes:
+          - ./config/:/etc/nginx/conf.d
+          - ./static:/static
+      depends_on:
+          - web
+    db:
+        image: postgres
+        ports:
+            - 5432:5432
+        environment:
+            - POSTGRES_USER=will
+            - POSTGRES_PASSWORD=milner
+            - POSTGRES_DB=symkala
+        volumes:
+            - ./data/db_data:/var/lib/postgresql/data
+    web:
+        container_name: web
+        image: symkala
+        command: bash -c "while !</dev/tcp/db/5432; do sleep 1; done;
+                            sleep 3;
+                            python manage.py migrate &&
+                            python manage.py collectstatic --no-input &&
+                            python manage.py runserver 0.0.0.0:8000 --nostatic"
+        env_file: config/.env.vault
+        environment:
+            - DJANGO_ENVIRONMENT=DOCKER
+            - DB_USER=will
+            - DB_PW=milner
+            - DB_NAME=symkala
+            - DB_HOST=db
+            - DB_PORT=5432
+            - IS_DEBUG=TRUE
+        volumes:
+            - ./static://static
+            - .:/code
+        expose:
+          - 8000
+        depends_on:
+            - db

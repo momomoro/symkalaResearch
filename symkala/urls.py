@@ -19,19 +19,20 @@ from django.contrib import admin
 
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib.auth import views as auth_views
 
 from symkalaweb import views
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-	url(r'^login$','django.contrib.auth.views.login',{'template_name':'login.html'},name='login'),
-	url(r'^logout/$','django.contrib.auth.views.logout',{'template_name':'login.html'},name='logout'),
-	url(r'password_change/$','django.contrib.auth.views.password_change',name='passwordchange'),
-	url(r'password_change_done','django.contrib.auth.views.password_change_done',name="password_change_done"),
-	url(r'^reset/$','django.contrib.auth.views.password_reset',name='reset'),
-	url(r'^resetDone/$','django.contrib.auth.views.password_reset_done',name='password_reset_done'),
-	url(r'^password_reset_complete','django.contrib.auth.views.password_reset_complete',name='password_reset_complete'),
-	url(r'^reset/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,20})/$','django.contrib.auth.views.password_reset_confirm',name='password_reset_confirm' ),
+	url(r'^login$', auth_views.login,{'template_name':'login.html'},name='login'),
+	url(r'^logout/$', auth_views.logout, {'template_name':'login.html'},name='logout'),
+	url(r'password_change/$', auth_views.password_change,name='passwordchange'),
+	url(r'password_change_done', auth_views.password_change_done ,name="password_change_done"),
+	url(r'^reset/$', auth_views.password_reset,name='reset'),
+	url(r'^resetDone/$', auth_views.password_reset_done,name='password_reset_done'),
+	url(r'^password_reset_complete', auth_views.password_reset_complete, name='password_reset_complete'),
+	url(r'^reset/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,20})/$', auth_views.password_reset_confirm,name='password_reset_confirm' ),
 	url(r'account/$',views.account,name="account"),
 	
 	#core workflow urls
@@ -70,5 +71,5 @@ urlpatterns = [
 	url(r'^textPreview/(?P<dataId>(\d+))/$',views.textPreview,name='textPreview'),
 	url(r'^cliff/(?P<text>[\w\ ]+)',views.cliff,name='cliff'),
 	
-	url(r'^$','django.contrib.auth.views.login',{'template_name':'login.html'},name='splash'),
-] + static(settings.STATIC_URL,document_root = settings.STATIC_ROOT)
+	url(r'^$', auth_views.login,{'template_name':'login.html'},name='splash'),
+]

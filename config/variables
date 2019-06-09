@@ -1,0 +1,5 @@
+export DB_USER=will
+export DB_PW=milner
+export DB_NAME=symkala
+export DB_HOST=db
+export DB_PORT=5432

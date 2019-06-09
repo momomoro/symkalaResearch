@@ -15,6 +15,12 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 
+DB_NAME = os.environ["DB_NAME"]
+DB_HOST = os.environ["DB_HOST"]
+DB_USER = os.environ["DB_USER"]
+DB_PW = os.environ["DB_PW"]
+DB_PORT = os.environ["DB_PORT"]
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -28,7 +34,7 @@ SECRET_KEY = '+s66969+stbhgd3b29gbc_s!ryuaz%t2--h@n^1*(gk0*iwgu7'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -95,14 +101,19 @@ if 'RDS_HOSTNAME' in os.environ:
     }
 else:
 	DATABASES = {
-		'default': {
-			'ENGINE': 'django.db.backends.postgresql_psycopg2',
-			'NAME': 'symkala',
-			'USER' : 'postgres',
-			'PASSWORD' : 'MILNER',
-			'HOST' : 'localhost',
-			'PORT' : '5432',
-		}
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            # docker creates db name, user and password on initial container startup
+            'NAME': DB_NAME,
+            'USER': DB_USER,
+            'PASSWORD': DB_PW,
+            # when run in a docker container, host should be the name of the docker service
+            # data is available from your localhost at 'localhost'$SELF_SCOUT_DB_PORT
+            'HOST': DB_HOST,
+            # within the docker db container, database is running at 5432
+            # is exposed to localhost on port $SELF_SCOUT_DB_PORT
+            'PORT': DB_PORT,
+        }
 	}
 
 
@@ -142,30 +153,25 @@ USE_L10N = True
 
 USE_TZ = True
 
-AWS_STORAGE_BUCKET_NAME = 'symkaladev6'
-AWS_ACCESS_KEY_ID = 'AKIAIK57TCMHTNEIZY2A'
-AWS_SECRET_ACCESS_KEY = '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'
-	
-# Tell django-storages that when coming up with the URL for an item in S3 storage, keep
-# it simple - just use this domain plus the path. (If this isn't set, things get complicated).
-# This controls how the `static` template tag from `staticfiles` gets expanded, if you're using it.
-# We also use it in the next setting.
+# aws settings
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_REGION_NAME = os.getenv('REGION_NAME')  # e.g. us-east-2
+
+# Tell django-storages the domain to use to refer to static files.
 AWS_S3_CUSTOM_DOMAIN = '%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
 
-# This is used by the `static` template tag from `static`, if you're using that. Or if anything else
-# refers directly to STATIC_URL. So it's safest to always set it.
-STATIC_URL = "https://%s/" % AWS_S3_CUSTOM_DOMAIN
-
-# Tell the staticfiles app to use S3Boto storage when writing the collected static files (when
+# Tell the staticfiles app to use S3Boto3 storage when writing the collected static files (when
 # you run `collectstatic`).
-STATICFILES_STORAGE = 'storages.backends.s3boto.S3BotoStorage'
+STATICFILES_LOCATION = 'static'
+STATICFILES_STORAGE = 'storages.StaticStorage'
 
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto.S3BotoStorage'
+MEDIAFILES_LOCATION = 'media'
+DEFAULT_FILE_STORAGE = 'storages.MediaStorage'
 
-# Additional locations of static files
-STATICFILES_DIRS = (
-    "https://%s/" % AWS_S3_CUSTOM_DOMAIN,
-)
+STATICFILES_DIRS = (os.path.join(BASE_DIR, 'static'),)
+
 
 #Email smtp setup
 EMAIL_HOST = "smtp.gmail.com"

@@ -2,8 +2,6 @@ from django.shortcuts import render,render_to_response,get_object_or_404,redirec
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.template import RequestContext
 
-from django.core.context_processors import csrf
-
 from django.core.mail import send_mail
 
 from django.utils import timezone
@@ -28,37 +26,22 @@ import uuid
 
 from datetime import datetime,timedelta
 
-from forms import *
-from models import *
+from .forms import *
+from .models import *
 
 from PIL import Image
 
 import os, time
-import filereader
+from . import filereader
 import csv
 
 from subprocess import Popen, PIPE, STDOUT
-from sets import Set
 
 import json 
 import boto
 
-import tweepy
 import sqlite3
 
-from mediameter.cliff import Cliff
-
-consumer_key = 	"J9PJwNdonRO6WJ7s1hzjq8i4D"
-consumer_secret = "4JCEJnzCihfCUOQCL3vKJaNjl9srH4dndPl3mFC608JIIPjNtJ"
-
-auth = tweepy.OAuthHandler(consumer_key,consumer_secret)
-
-access_token = "704381276719951872-l4L21g6tYpS28l0o2sZpxq6hIqvfW7j"
-access_token_secret = "wlcQlWWsQZ6JykRKyPPBE9cUCZHaT7WYnqlSZrhw1omeL"
-
-auth.set_access_token(access_token,access_token_secret)
-
-api = tweepy.API(auth)
 
 ##
 # Simple landing page for symkala. 
@@ -76,8 +59,9 @@ def splash(request):
 		try:
 			send_mail(email_subject,email_body,email,["will@symkala.com","davey@symkala.com"],fail_silently=False)
 		except: 
-			print "problem with email"
-	return render(request,"splash.html")
+			print("problem with email")
+	print("hi")
+	return render(request, "splash.html")
 
 
 def account(request):
@@ -92,7 +76,6 @@ def share(request):
 # Page users are navigated to after login.
 # This is where data import, tagging, and card creation is done
 ##
-@login_required
 def archive(request):
 	context = {}
 	#data belonging to user
@@ -132,7 +115,7 @@ def archive(request):
 		files = request.FILES.getlist('data')
 		for file in files:
 			fileType = file.content_type
-			print fileType
+			print(fileType)
 			newFile = File(file=file,type=fileType)
 			newFile.save()
 			
@@ -146,21 +129,22 @@ def archive(request):
 					im = Image.open(file)
 					try:
 						exif_data = filereader.get_exif_data(im)
-						print exif_data
+						print(exif_data)
 					except:
-						print "could not get exif"
+						print("could not get exif")
 					if exif_data:
 						lat,lon = filereader.get_lat_lon(exif_data)
-						print lat
-						print lon
+						print(lat)
+						print(lon)
 					
 					new_data = Data(name=file.name,lat=lat,lon=lon,file=newFile)
 					new_data.save()
 					new_data.owners.add(request.user)
 					new_data.save()
 					
-				except:
-					print "problem with data upload"
+				except Exception as err:
+					print("problem with data upload")
+					print(err)
 					return render(request,"archive.html",context)
 			elif fileType.startswith("text") and file.name.endswith(".txt"):
 				new_data = Data(name=file.name,file=newFile)
@@ -188,7 +172,7 @@ def archive(request):
 				conn.text_factory = str
 				reader = csv.reader(file)
 				tableFields = "("
-				header = reader.next()
+				header = next(reader)
 				headerList = [field.replace(" ","") for field in header] #remove whitespace
 				headerList = [field.lower() for field in headerList] #convert to lowercase
 				headerTuple = tuple(headerList)
@@ -262,7 +246,7 @@ def manage(request):
 		selectedCards = request.POST.get("cards")
 		if selectedCards:
 			selectedCards = json.loads(selectedCards)
-		print selectedCards
+		print(selectedCards)
 		cards = Card.objects.filter(id__in=selectedCards)
 		context['cards'] = cards
 		return render(request,"stacks.html",context)
@@ -283,7 +267,7 @@ def manage(request):
 @login_required
 def visualize(request):
 	if request.method != "POST":
-		print "select data first!"
+		print("select data first!")
 		return redirect("manage")
 	csvFileName = 'data/' + str(uuid.uuid1()) + '.csv'
 	csvFile = default_storage.open(csvFileName,'w+')
@@ -361,7 +345,7 @@ def visualize(request):
 						id = row[0]
 						latitude = row[str(lat)]
 						longitude = row[str(lon)]
-						if "tags" in row.keys():
+						if "tags" in list(row.keys()):
 							tags = row["tags"]
 						else:
 							tags = tagList
@@ -375,7 +359,7 @@ def visualize(request):
 						textFile.close()
 						writer.writerow({'fileName' : "https://s3.amazonaws.com/symkaladev6/" + textFileName})
 					except:
-						print "problem with text file"
+						print("problem with text file")
 			elif typeOfAnalysis == "pdf":
 				if data.file.type.endswith("pdf"):
 					try:
@@ -385,7 +369,7 @@ def visualize(request):
 						pdfFile.close()
 						writer.writerow({'fileName' : "https://s3.amazonaws.com/symkaladev6/" + textFileName})
 					except:
-						print "problem with pdf file"
+						print("problem with pdf file")
 			else:
 				if(data.lat != None and data.lon != None):
 					writer.writerow({'fulcrum_id': data.name,'FacilityType': tagList,'latitude':data.lat,'longitude':data.lon})
@@ -407,7 +391,7 @@ def visualize(request):
 	elif typeOfAnalysis == "scatter":
 		return redirect("scatter",csvFileName)
 	else:
-		print "analyis not supported... yet"
+		print("analyis not supported... yet")
 		return HttpResponse("Analysis not supported... yet")
 	return render(request,"visualize.html")
 
@@ -425,14 +409,14 @@ def proximity(request):
 	proximityFileName = 'data/' + str(uuid.uuid1()) + '.csv'
 	p = Popen(['java','-jar','calculateDistances.jar','https://s3.amazonaws.com/symkaladev6/' + fileName,",","0.005","True",'symkaladev6',proximityFileName],stdout=PIPE,stderr=STDOUT)
 	for line in p.stdout:
-		print line
+		print(line)
 	return render(request,"proximity.html",{'shapeFile' : shapeFile, 'forceFileName' : proximityFileName})
 	
 def text(request,fileName):
 	textFileName = 'data/' + str(uuid.uuid1()) + '.csv'
 	p = Popen(['java','-jar','calculateTFIDF.jar','https://s3.amazonaws.com/symkaladev6/' + fileName,',','50','symkaladev6',textFileName],stdout=PIPE,stderr=STDOUT)
 	for line in p.stdout:
-		print line
+		print(line)
 	return render(request,"text.html",{'fileName': textFileName})
 		
 ##
@@ -492,7 +476,7 @@ def analysis(request):
 		card = Card.objects.get(id=cardId)
 		cardData = card.data.all()
 		for data in cardData:
-			print data.file.type
+			print(data.file.type)
 			if data.file.type.startswith("text"):
 				analysis["text"] = True
 			elif data.file.type.endswith("pdf"):
@@ -508,7 +492,7 @@ def analysis(request):
 				analysis["csvTin"] = True
 				analysis["scatter"] = True
 			dataElements.append(data)
-	return JsonResponse(analysis.keys(),safe=False)
+	return JsonResponse(list(analysis.keys()),safe=False)
 
 def getData(request,dataSetId):
 	dataSet = DataSet.objects.get(id=dataSetId)
@@ -579,7 +563,7 @@ def dataTools(request,dataId):
 	if data.file.type.startswith("text"):
 		context["text"] = data.file.file.read()
 	elif data.file.type.endswith("pdf"):
-		print data.file.file.read()
+		print(data.file.file.read())
 	context["data"] = data
 	context["tags"] = data.tag_set.all()
 	return render(request,"dataTool.html",context)
@@ -594,11 +578,11 @@ def cliff(request,text):
 def createCard(request):
 	if request.method == "POST":
 		cardName = request.POST["cardName"]
-		print cardName
+		print(cardName)
 		if cardName:
 			card = Card(name=cardName)
 		existingCard = request.POST.get("existingCards")
-		print existingCard
+		print(existingCard)
 		if existingCard:
 			card = Card.objects.get(id=existingCard,owners=request.user)
 		card.save()
@@ -646,10 +630,10 @@ def tag(request):
 						try:
 							existingTag = Tag.objects.get(name=tagName,owners = request.user)
 						except:
-							print "oh no"
+							print("oh no")
 							existingTag = 0
 						if existingTag:
-							print "tag %s already exists!" % (tagName)
+							print("tag %s already exists!" % (tagName))
 							data.tag_set.add(Tag.objects.get(name=tagName,owners = request.user))
 							tags.append({'name': tagName,'count':getTagCount(request.user,existingTag),'value':existingTag.id})
 							continue
@@ -696,11 +680,11 @@ def getDataSetNames(request,dataSetId):
 	return HttpResponse(tagNames)
 		
 def removeTag(request):
-	print "removing tag!";
+	print("removing tag!");
 	dataElements = request.POST.get("dataToRemoveTagFrom")
 	if dataElements:
 		dataElements = json.loads(dataElements)
-	print dataElements
+	print(dataElements)
 	existingTag = request.POST.get("existingTags")
 	if existingTag:
 		tag = Tag.objects.get(id=existingTag,owners=request.user)
@@ -717,7 +701,7 @@ def deleteTag(request):
 			tag = Tag.objects.get(id=existingTag,owners=request.user)
 			tag.delete()
 	except:
-		print "Tag with name %s does not exist!" % (tagName)
+		print("Tag with name %s does not exist!" % (tagName))
 	return redirect("archive")
 	
 def deleteData(request,dataId):
@@ -725,7 +709,7 @@ def deleteData(request,dataId):
 		data = Data.objects.get(id=dataId,owners = request.user.id);
 		data.delete()
 	except:
-		print "unauthorized or invalid ID!"
+		print("unauthorized or invalid ID!")
 	return redirect("archive")
 	
 def getTagCount(user,tag):
@@ -734,7 +718,7 @@ def getTagCount(user,tag):
 
 def img_api(request,img_id):
 	img = File.objects.get(id=img_id)
-	print str(img.file).endswith(".zip")
+	print(str(img.file).endswith(".zip"))
 	if img.type.startswith("image"):
 		return HttpResponse(img.file.read())
 	elif img.type.startswith("text") and str(img.file).endswith(".txt"):
@@ -751,7 +735,7 @@ def img_api(request,img_id):
 def dataset_api(request,dataset_id):
 	dataset = DataSet.objects.get(id=dataset_id)
 	data = dataset.data.order_by('?').first()
-	print data
+	print(data)
 	img = File.objects.get(id=data.file.id)
 	if img.type.startswith("image"):
 		return HttpResponse(img.file.read())
@@ -787,8 +771,8 @@ def register(request):
 			try:
 				send_mail(email_subject,email_body,"do_not_reply@symkala.com",[email],fail_silently=False)
 			except:
-				user.delete()
-			
+				print("problem sending email")
+
 			return HttpResponseRedirect('/register_success')
 	else:
 		args['form'] = RegistrationForm()

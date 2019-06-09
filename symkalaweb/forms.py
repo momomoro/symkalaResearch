@@ -3,7 +3,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 
-from models import *
+from .models import *
 
 class uploadForm(forms.Form):
 	class Meta:
@@ -16,7 +16,7 @@ class uploadForm(forms.Form):
 		file = self.cleaned_data['file']
 		if not file:
 			return None
-		print file.content_type
+		print(file.content_type)
 		if not file.content_type:
 			raise forms.ValidationError('File type is not supported')
 		return file

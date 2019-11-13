@@ -53,12 +53,17 @@ function produceMap(results) {
 		var lat = data[i]["latitude"];
 		var lon = data[i]["longitude"];
 		var type = data[i]["FacilityType"];
+
+		if(type == null) {
+			type = ""
+		}
+
 		var title = data[i]["fulcrum_id"];
 		if(!lat || !lon) {
 			//Need proper coordinates for point
 			continue;
 		}
-		if(type.length == 0) {
+		if(type && type.length == 0) {
 			var markerColor = colors["none"];
 			if(markerColor === undefined) {
 				markerColor = rainbow(30,getRandom(1,30));
@@ -532,6 +537,6 @@ function makeList() {
 
 window.onload = function () {
 	map();
-	Papa.parse("https://s3.amazonaws.com/symkaladev6/" + fileName,config);
-	Papa.parse("https://s3.amazonaws.com/symkaladev6/" + shapeFile,shapeConfig);
+	Papa.parse("https://symkala.s3.amazonaws.com/media/" + fileName,config);
+	Papa.parse("https://symkala.s3.amazonaws.com/media/" + shapeFile,shapeConfig);
 }

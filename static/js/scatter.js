@@ -88,7 +88,7 @@ function generateScatter(data) {
 			.attr("transform",
 					"translate(" + margin.left + "," + margin.top + ")");
 					
-	d3.csv("https://s3.amazonaws.com/symkaladev6/" + fileName,function(error,data){
+	d3.csv("https://symkala.s3.amazonaws.comdev6/" + fileName,function(error,data){
 		data.forEach(function(d){
 			d.x = d.x;
 			d.y = +d.y;
@@ -216,6 +216,6 @@ window.onload = function () {
 		drake.remove();
 	});
 	
-	console.log("https://s3.amazonaws.com/symkaladev6/" + fileName);
-	Papa.parse("https://s3.amazonaws.com/symkaladev6/" + fileName,config);
+	console.log("https://symkala.s3.amazonaws.comdev6/" + fileName);
+	Papa.parse("https://symkala.s3.amazonaws.comdev6/" + fileName,config);
 }

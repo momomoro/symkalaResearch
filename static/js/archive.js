@@ -372,7 +372,7 @@ $(document).ready(function() {
 				dataElements.add(id);
 			}
 			console.log(dataEl);
-			$(dataEl).find(".basic_img").toggleClass("select");
+			$(dataEl).find(".image--basic").toggleClass("select");
 		}
 		data = [];
 		for (item of dataElements) {

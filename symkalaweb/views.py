@@ -21,7 +21,7 @@ from django.db.models import Min,Max
 
 from django.contrib.staticfiles.templatetags.staticfiles import static
 
-import hashlib,random
+import hashlib, random
 import uuid
 
 from datetime import datetime,timedelta
@@ -117,32 +117,35 @@ def archive(request):
 			fileType = file.content_type
 			print(fileType)
 			newFile = File(file=file,type=fileType)
-			newFile.save()
-			
+
 			if fileType.startswith('image'):
 				newFile.image = file
-				newFile.save()
-				exif_data = False 
+				exif_data = False
 				lat = None
 				lon = None
 				try:
-					im = Image.open(file)
 					try:
+						im = Image.open(file)
 						exif_data = filereader.get_exif_data(im)
 						print(exif_data)
-					except:
+					except Exception as E:
 						print("could not get exif")
+						print(E)
 					if exif_data:
-						lat,lon = filereader.get_lat_lon(exif_data)
+						lat, lon = filereader.get_lat_lon(exif_data)
 						print(lat)
 						print(lon)
-					
+					if lat is None and lon is None:
+						lat, lon = random.uniform(-180, 180), random.uniform(-90, 90)
+
+					newFile.save()
 					new_data = Data(name=file.name,lat=lat,lon=lon,file=newFile)
 					new_data.save()
 					new_data.owners.add(request.user)
 					new_data.save()
-					
+
 				except Exception as err:
+					raise
 					print("problem with data upload")
 					print(err)
 					return render(request,"archive.html",context)
@@ -165,7 +168,7 @@ def archive(request):
 				dataBaseName = "db/" + file.name[:-4] + ".db"
 				tmpDb = file.name[:-4] + ".db"
 				c = boto.connect_s3(settings.AWS_ACCESS_KEY_ID,settings.AWS_SECRET_ACCESS_KEY)
-				b = c.lookup("symkaladev6")
+				b = c.lookup("symkala")
 				k = b.new_key(dataBaseName)
 				k.set_contents_from_string("")
 				conn = sqlite3.connect(tmpDb)
@@ -299,7 +302,7 @@ def visualize(request):
 				tmpFile = default_storage.open(shapeFileName,'w')
 				tmpFile.write(data.file.file.read())
 				tmpFile.close()
-				shapeWriter.writerow({'fileName' : "https://s3.amazonaws.com/symkaladev6/" + shapeFileName})
+				shapeWriter.writerow({'fileName' : "https://symkala.s3.amazonaws.com/media/" + shapeFileName})
 				continue
 			if typeOfAnalysis == "scatter":
 				x = request.POST["x"]
@@ -308,7 +311,7 @@ def visualize(request):
 				
 				
 				c = boto.connect_s3(settings.AWS_ACCESS_KEY_ID,settings.AWS_SECRET_ACCESS_KEY)
-				b = c.lookup("symkaladev6")
+				b = c.lookup("symkala")
 				k = b.new_key(db)
 				tmpDb = "tmp.db"
 				k.get_contents_to_filename(tmpDb)
@@ -331,7 +334,7 @@ def visualize(request):
 					db = data.name
 					
 					c = boto.connect_s3(settings.AWS_ACCESS_KEY_ID,settings.AWS_SECRET_ACCESS_KEY)
-					b = c.lookup("symkaladev6")
+					b = c.lookup("symkala")
 					k = b.new_key(db)
 					tmpDb = "tmp.db"
 					k.get_contents_to_filename(tmpDb)
@@ -357,7 +360,7 @@ def visualize(request):
 						textFile = default_storage.open(textFileName,'w')
 						textFile.write(data.file.file.read())
 						textFile.close()
-						writer.writerow({'fileName' : "https://s3.amazonaws.com/symkaladev6/" + textFileName})
+						writer.writerow({'fileName' : "https://symkala.s3.amazonaws.com/media/" + textFileName})
 					except:
 						print("problem with text file")
 			elif typeOfAnalysis == "pdf":
@@ -367,7 +370,7 @@ def visualize(request):
 						pdfFile = default_storage.open(textFileName,'w')
 						pdfFile.write(data.file.file.read())
 						pdfFile.close()
-						writer.writerow({'fileName' : "https://s3.amazonaws.com/symkaladev6/" + textFileName})
+						writer.writerow({'fileName' : "https://symkala.s3.amazonaws.com/media/" + textFileName})
 					except:
 						print("problem with pdf file")
 			else:
@@ -406,15 +409,19 @@ def scatter(request,fileName):
 def proximity(request):
 	fileName = request.session.get('fileName')
 	shapeFile = request.session.get('shapeFileName')
+
+	print(fileName)
 	proximityFileName = 'data/' + str(uuid.uuid1()) + '.csv'
-	p = Popen(['java','-jar','calculateDistances.jar','https://s3.amazonaws.com/symkaladev6/' + fileName,",","0.005","True",'symkaladev6',proximityFileName],stdout=PIPE,stderr=STDOUT)
+	print(settings.AWS_ACCESS_KEY_ID,settings.AWS_SECRET_ACCESS_KEY)
+	#p = Popen(['java','-jar', 'calculateDistances.jar','media/' + fileName,",","0.005","True",'symkala',proximityFileName, 'us-east-2', settings.AWS_ACCESS_KEY_ID,settings.AWS_SECRET_ACCESS_KEY, 'fulcrum_id', 'longitude', 'latitude', 'tags'],stdout=PIPE,stderr=STDOUT)
+	p = Popen(['java','-jar', 'calculateDistances.jar','media/data/Mogadishu_Locations.csv',",","0.005","True",'symkala',proximityFileName, 'us-east-2', settings.AWS_ACCESS_KEY_ID,settings.AWS_SECRET_ACCESS_KEY, 'fulcrum_id', 'longitude', 'latitude', 'tags'],stdout=PIPE,stderr=STDOUT)
 	for line in p.stdout:
 		print(line)
 	return render(request,"proximity.html",{'shapeFile' : shapeFile, 'forceFileName' : proximityFileName})
 	
 def text(request,fileName):
 	textFileName = 'data/' + str(uuid.uuid1()) + '.csv'
-	p = Popen(['java','-jar','calculateTFIDF.jar','https://s3.amazonaws.com/symkaladev6/' + fileName,',','50','symkaladev6',textFileName],stdout=PIPE,stderr=STDOUT)
+	p = Popen(['java','-jar','calculateTFIDF.jar', 'https://symkala.s3.amazonaws.com/media/' + fileName,',','50','symkala',textFileName],stdout=PIPE,stderr=STDOUT)
 	for line in p.stdout:
 		print(line)
 	return render(request,"text.html",{'fileName': textFileName})
@@ -452,7 +459,7 @@ def getColumnOptions(request):
 				db = data.name
 				
 				c = boto.connect_s3(settings.AWS_ACCESS_KEY_ID,settings.AWS_SECRET_ACCESS_KEY)
-				b = c.lookup("symkaladev6")
+				b = c.lookup("symkala")
 				k = b.new_key(db)
 				tmpDb = "tmp.db"
 				k.get_contents_to_filename(tmpDb)
@@ -539,7 +546,7 @@ def textPreview(request,dataId):
 		db = data.name
 		
 		c = boto.connect_s3(settings.AWS_ACCESS_KEY_ID,settings.AWS_SECRET_ACCESS_KEY)
-		b = c.lookup("symkaladev6")
+		b = c.lookup("symkala")
 		k = b.new_key(db)
 		tmpDb = "tmp.db"
 		k.get_contents_to_filename(tmpDb)

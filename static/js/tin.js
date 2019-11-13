@@ -376,6 +376,6 @@ function map() {
 
 window.onload = function () {
 	map();
-	Papa.parse("https://s3.amazonaws.com/symkaladev6/" + fileName,config);
-	Papa.parse("https://s3.amazonaws.com/symkaladev6/" + shapeFile,shapeConfig);
+	Papa.parse("https://symkala.s3.amazonaws.com/media/" + fileName,config);
+	Papa.parse("https://symkala.s3.amazonaws.com/media/" + shapeFile,shapeConfig);
 }

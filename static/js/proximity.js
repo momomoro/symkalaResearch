@@ -668,7 +668,8 @@ var data = [];
 	
 window.onload = function () {
 	map();
-	Papa.parse("https://s3.amazonaws.com/symkaladev6/" + forceFileName,config);
-	Papa.parse("https://s3.amazonaws.com/symkaladev6/" + shapeFile,shapeConfig);
-	//Papa.parse("https://s3.amazonaws.com/symkaladev6/" + forceFileName,forceConfig);
+	console.log("https://symkala.s3.amazonaws.com/" + forceFileName)
+	Papa.parse("https://symkala.s3.amazonaws.com/" + forceFileName,config);
+	Papa.parse("https://symkala.s3.amazonaws.com/media/" + shapeFile,shapeConfig);
+	//Papa.parse("https://symkala.s3.amazonaws.com/media/" + forceFileName,forceConfig);
 }

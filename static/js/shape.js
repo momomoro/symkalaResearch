@@ -120,5 +120,5 @@ function map() {
 
 window.onload = function () {
 	map();
-	Papa.parse("https://s3.amazonaws.com/symkaladev6/" + fileName,config);
+	Papa.parse("https://symkala.s3.amazonaws.comdev6/" + fileName,config);
 }

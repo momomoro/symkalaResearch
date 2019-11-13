@@ -1,5 +1,5 @@
 # Get python package
-FROM python:3
+FROM rappdw/docker-java-python
 
 MAINTAINER Will Milner # email: will@tulcolabs.com
 
@@ -21,6 +21,7 @@ ADD requirements.txt $HOME
 
 RUN apt-get update && apt-get -y upgrade
 
+RUN pip install Pillow
 RUN pip install -r requirements.txt
 
 # copy application to container folder

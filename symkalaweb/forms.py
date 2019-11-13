@@ -23,10 +23,10 @@ class uploadForm(forms.Form):
 		
 
 class TagSelectForm(forms.Form):
-	existingTags = forms.ModelChoiceField(queryset=Tag.objects.all())
+	existingTags = forms.ModelChoiceField(queryset=Tag.objects.all(), required=False)
 
 class CardSelectForm(forms.Form):
-	existingCards = forms.ModelChoiceField(queryset=Card.objects.all())
+	existingCards = forms.ModelChoiceField(queryset=Card.objects.all(), required=False)
 
 ## 
 # User registration form for symkala web release. 

@@ -92,8 +92,8 @@ function makeChartTabs() {
 window.onload = function () {
 	makeChartTabs();
 	var config = constructConfig();
-	console.log("symkaladev5.s3.amazonaws.com/" + fileName);
-	Papa.parse("https://s3.amazonaws.com/symkaladev6/" + fileName,config);
+	console.log("symkaladev5.symkala.s3.amazonaws.com/media" + fileName);
+	Papa.parse("https://symkala.s3.amazonaws.comdev6/" + fileName,config);
 }
 
 var num = 0;

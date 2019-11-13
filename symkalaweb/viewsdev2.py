@@ -164,7 +164,7 @@ def visualize(request):
 
 def proximity(request,fileName):
 	proximityFileName = 'data/' + str(uuid.uuid1()) + '.csv'
-	p = Popen(['java','-jar','distanceCalculator.jar','https://s3.amazonaws.com/symkala5/' + fileName,",","0.005","True",proximityFileName],stdout=PIPE,stderr=STDOUT)
+	p = Popen(['java','-jar','distanceCalculator.jar','https://symkala.s3.amazonaws.com5/' + fileName,",","0.005","True",proximityFileName],stdout=PIPE,stderr=STDOUT)
 	for line in p.stdout:
 		print(line)
 	return render(request,"proximity.html",{'fileName' : fileName,'forceFileName' : proximityFileName})

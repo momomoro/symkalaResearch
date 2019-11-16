@@ -771,14 +771,7 @@ def register(request):
 			key_expires = datetime.now() + timedelta(2)
 			
 			new_profile = UserProfile(user=user,activation_key=activation_key,
-							key_expires=key_expires).save()
-							
-			email_subject = 'Confirm Symkala Account'
-			email_body = "Hello %s.  Welcome to Symkala!  Click this link within 48 hours to confirm your account : http://symkala-dev5.elasticbeanstalk.com/confirm/%s" % (username,activation_key)
-			try:
-				send_mail(email_subject,email_body,"do_not_reply@symkala.com",[email],fail_silently=False)
-			except:
-				print("problem sending email")
+							key_expires=key_expires, is_active=True).save()
 
 			return HttpResponseRedirect('/register_success')
 	else:
@@ -787,12 +780,12 @@ def register(request):
 	return render_to_response('register.html',args,context_instance=RequestContext(request))
 		
 def register_success(request):
-	return render(request,'success.html')
+	return render(request, 'success.html')
 	
 def register_confirm(request,activation_key):
 	if request.user.is_authenticated():
 		HttpResponseRedirect('/home')
-	user_profile = get_object_or_404(UserProfile,activation_key=activation_key)
+	user_profile = get_object_or_404(UserProfile, activation_key=activation_key)
 	
 	#if key is expired, delete user and have them register again
 	#@TODO: just update key and resend link
@@ -804,5 +797,5 @@ def register_confirm(request,activation_key):
 	user.is_active = True
 	user.save()
 	user.backend = 'django.contrib.auth.backends.ModelBackend'
-	login(request,user)
+	login(request, user)
 	return render_to_response('confirm.html')

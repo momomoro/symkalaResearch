@@ -1,0 +1,4 @@
+ls
+java
+exit()
+exit

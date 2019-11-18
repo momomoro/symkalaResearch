@@ -110,7 +110,7 @@ def archive(request):
 	else:
 		context['hasData'] = False
 	if request.method != 'POST':
-		return render(request,"archive.html",context)
+		return render(request, "archive.html", context)
 	else:
 		files = request.FILES.getlist('data')
 		for file in files:
@@ -756,7 +756,7 @@ def dataset_api(request,dataset_id):
 ##
 def register(request):
 	args = {}
-	args.update(csrf(request))
+	#args.update(csrf(request))
 	if request.method == 'POST':
 		form = RegistrationForm(request.POST)
 		args['form'] = form
@@ -765,19 +765,17 @@ def register(request):
 			
 			username = form.cleaned_data['username']
 			user = User.objects.get(username=username)
+			user.is_active = True
+			user.save()
 			email = form.cleaned_data['email']
-			salt = hashlib.sha1(str(random.random())).hexdigest()[:5]
-			activation_key = hashlib.sha1(salt+email).hexdigest()
-			key_expires = datetime.now() + timedelta(2)
-			
-			new_profile = UserProfile(user=user,activation_key=activation_key,
-							key_expires=key_expires, is_active=True).save()
+
+			new_profile = UserProfile(user=user).save()
 
 			return HttpResponseRedirect('/register_success')
 	else:
 		args['form'] = RegistrationForm()
 			
-	return render_to_response('register.html',args,context_instance=RequestContext(request))
+	return render(request, 'register.html', args)
 		
 def register_success(request):
 	return render(request, 'success.html')

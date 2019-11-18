@@ -28,7 +28,7 @@ services:
             - ./data/db_data:/var/lib/postgresql/data
     web:
         container_name: web
-        image: symkala
+        image: willtulcolabs/symkala
         command: bash -c "while !</dev/tcp/db/5432; do sleep 1; done;
                             sleep 3;
                             python manage.py migrate &&
@@ -43,9 +43,6 @@ services:
             - DB_HOST=db
             - DB_PORT=5432
             - IS_DEBUG=TRUE
-        volumes:
-            - ./static://static
-            - .:/code
         expose:
           - 8000
         depends_on:

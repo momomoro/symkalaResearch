@@ -2,6 +2,8 @@ from django.shortcuts import render,render_to_response,get_object_or_404,redirec
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.template import RequestContext
 
+
+
 from django.core.mail import send_mail
 
 from django.utils import timezone
@@ -37,11 +39,31 @@ import csv
 
 from subprocess import Popen, PIPE, STDOUT
 
+
 import json 
 import boto
 
+import tweepy
 import sqlite3
 
+from cliff.api import Cliff
+from clarifai.rest import ClarifaiApp
+
+consumer_key = 	"J9PJwNdonRO6WJ7s1hzjq8i4D"
+consumer_secret = "4JCEJnzCihfCUOQCL3vKJaNjl9srH4dndPl3mFC608JIIPjNtJ"
+
+auth = tweepy.OAuthHandler(consumer_key,consumer_secret)
+
+access_token = "704381276719951872-l4L21g6tYpS28l0o2sZpxq6hIqvfW7j"
+access_token_secret = "wlcQlWWsQZ6JykRKyPPBE9cUCZHaT7WYnqlSZrhw1omeL"
+
+auth.set_access_token(access_token,access_token_secret)
+
+api = tweepy.API(auth)
+
+
+clarifai_ap_id = "c858bcccb0b9417fa1e0eec07cafdd7c"
+clarifai_api = ClarifaiApp(api_key=clarifai_ap_id)
 
 ##
 # Simple landing page for symkala. 
@@ -60,7 +82,6 @@ def splash(request):
 			send_mail(email_subject,email_body,email,["will@symkala.com","davey@symkala.com"],fail_silently=False)
 		except: 
 			print("problem with email")
-	print("hi")
 	return render(request, "splash.html")
 
 
@@ -76,6 +97,7 @@ def share(request):
 # Page users are navigated to after login.
 # This is where data import, tagging, and card creation is done
 ##
+
 def archive(request):
 	context = {}
 	#data belonging to user
@@ -150,16 +172,19 @@ def archive(request):
 					print(err)
 					return render(request,"archive.html",context)
 			elif fileType.startswith("text") and file.name.endswith(".txt"):
+				newFile.save()
 				new_data = Data(name=file.name,file=newFile)
 				new_data.save()
 				new_data.owners.add(request.user)
 				new_data.save()
 			elif fileType.endswith("pdf"):
+				newFile.save()
 				new_data = Data(name=file.name,file=newFile)
 				new_data.save()
 				new_data.owners.add(request.user)
 				new_data.save()
 			elif file.name.endswith("zip"):
+				newFile.save()
 				new_data = Data(name=file.name,file=newFile)
 				new_data.save()
 				new_data.owners.add(request.user)
@@ -199,6 +224,7 @@ def archive(request):
 					c.execute("INSERT INTO metadata VALUES (?)",(field.lower(),))
 				conn.commit()
 				conn.close()
+				newFile.save()
 				new_data = Data(name=dataBaseName,file=newFile)
 				new_data.save()
 				new_data.owners.add(request.user)
@@ -219,7 +245,55 @@ def archive(request):
 		context['hasData'] = False
 	context['data'] = data
 	return render(request,"archive.html",context)
-	
+
+
+def clarifaiTag(request, dataId):
+	if request.is_ajax():
+		data = Data.objects.get(id=dataId, owners=request.user.id);
+		image = data.file
+		if not image.type.startswith("image"):
+			return HttpResponse("data not an image")
+		else:
+			print("FILE" + str(image.file))
+			model = clarifai_api.public_models.general_model
+			result = model.predict_by_bytes(image.file.read())
+			writeResultsToCsv(result)
+			keywords = result["outputs"][0]["data"]["concepts"]
+			for concept in keywords:
+				word = concept["name"]
+				if not Keyword.objects.filter(name=word).exists():
+					new_keyword = Keyword(name=word)
+					new_keyword.save()
+					data.keywords.add(new_keyword)
+				else:
+					keyword = Keyword.objects.get(name=word)
+					data.keywords.add(keyword)
+				data.save()
+			return redirect("loadKeywords", dataId)
+
+
+def loadKeywords(request, dataId):
+	data = Data.objects.get(id=dataId, owners=request.user.id);
+	context = {}
+	context["keywords"] = data.keywords.all()
+	context["dataId"] = dataId
+	return render(request, "clarifai.html", context)
+
+
+def writeResultsToCsv(clarifaiResponse):
+	try:
+		fileName = "keywords/" + str(uuid.uuid1()) + '.csv'
+		keywordCsv = default_storage.open(fileName, "w+")
+		keywordCsvWriter = csv.DictWriter(keywordCsv, fieldnames=["keywords"])
+		keywordCsvWriter.writeHeader()
+
+		results = clarifaiResponse.result.tag
+		for result in results.classes:
+			keywordCsvWriter.writerow({"keywords": result})
+		return True
+	except:
+		return False
+
 def twitter(request):
 	if request.method == "POST":
 		query = request.POST["query"]
@@ -327,7 +401,7 @@ def visualize(request):
 					rowY = row[str(y)]
 					writer.writerow({"x":rowX,"y":rowY})
 			
-			elif typeOfAnalysis == "csvHeat" or typeOfAnalysis == "csvCluster" or typeOfAnalysis == "csvTin":
+			elif typeOfAnalysis == "csvHeat" or typeOfAnalysis == "csvCluster" or typeOfAnalysis == "csvTin" or typeOfAnalysis == "csvPoI":
 				lat = request.POST["lat"]
 				lon = request.POST["lon"]
 				if str(data.file.file).endswith("csv"):
@@ -385,6 +459,8 @@ def visualize(request):
 		return redirect("proximity")
 	elif typeOfAnalysis == "heat" or typeOfAnalysis == "csvHeat":
 		return redirect("heat")
+	elif typeOfAnalysis == "Points of Interest" or typeOfAnalysis == "csvPoI":
+		return redirect("poi")
 	elif typeOfAnalysis == "Triangulated Irregular Network" or typeOfAnalysis == "csvTin":
 		return redirect("tin")
 	elif typeOfAnalysis == "text":
@@ -436,6 +512,10 @@ def heat(request):
 	shapeFile = request.session.get('shapeFileName')
 	return render(request,"heat.html",{'fileName' : fileName,'shapeFile' : shapeFile})
 
+def poi(request):
+	fileName = request.session.get('fileName')
+	shapeFile = request.session.get('shapeFileName')
+	return render(request,"poi.html",{'fileName' : fileName,'shapeFile' : shapeFile})
 
 ##
 # create tin analysis
@@ -493,10 +573,12 @@ def analysis(request):
 				analysis["heat"] = True
 				analysis["Triangulated Irregular Network"] = True
 				analysis["cluster"] = True
+				analysis["Points of Interest"] = True
 			if str(data.file.file).endswith(".csv"):
 				analysis["csvCluster"] = True
 				analysis["csvHeat"] = True
 				analysis["csvTin"] = True
+				analysis["csvPoI"] = True
 				analysis["scatter"] = True
 			dataElements.append(data)
 	return JsonResponse(list(analysis.keys()),safe=False)
@@ -578,7 +660,7 @@ def dataTools(request,dataId):
 def cliff(request,text):
 	server = "http://localhost"
 	port = 8999
-	myCliff = Cliff(server,port)
+	myCliff = Cliff(server + ":" + port)
 	entities = myCliff.parseText(text)
 	return JsonResponse(entities)
 	
